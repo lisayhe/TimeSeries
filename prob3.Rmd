@@ -1,0 +1,63 @@
+---
+title: "prob1"
+author: "Lisa He"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(lattice)
+library(foreign)
+library(MASS)
+library(car)
+require(stats)
+require(stats4)
+library(KernSmooth)
+library(fastICA)
+library(cluster)
+library(leaps)
+library(mgcv)
+library(rpart)
+library(pan)
+library(mgcv)
+library(DAAG)
+library("TTR")
+library(tis)
+require("datasets")
+require(graphics)
+library("forecast")
+require(astsa)
+library(xtable)
+library(stats)
+library(readxl)
+library(quantmod)
+library(e1071)
+library(tseries)
+library(robustbase)
+library(sandwich)
+```
+
+
+
+
+
+```{r p5}
+N<-1000
+a<-1
+A<-3
+pois <-  rpois(N, 0.05)
+sumpois <- cumsum(pois)
+my_mean <- rep(0, N)
+
+for (i in 1:N){
+  my_mean[i] <- (a+sumpois[i])/(A+i)
+  
+}
+  
+
+plot(my_mean, type = "l")
+```
+
+It doesn't look odd to me. The mean start off close to the mean i set which is 1/A = 1/3 and then it jumps up and slowly goes down and eventually converges to lambda = 0.05

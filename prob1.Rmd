@@ -1,0 +1,191 @@
+---
+title: "prob1"
+author: "Lisa He"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(lattice)
+library(foreign)
+library(MASS)
+library(car)
+require(stats)
+require(stats4)
+library(KernSmooth)
+library(fastICA)
+library(cluster)
+library(leaps)
+library(mgcv)
+library(rpart)
+library(pan)
+library(mgcv)
+library(DAAG)
+library("TTR")
+library(tis)
+require("datasets")
+require(graphics)
+library("forecast")
+require(astsa)
+library(xtable)
+library(stats)
+library(readxl)
+library(quantmod)
+library(e1071)
+library(tseries)
+library(robustbase)
+library(sandwich)
+library(plotrix)
+```
+
+2. Becuase we have more flexibility with bernoulli normal misture model and that we can see more negative jumps than positive jumps which is consistent with the data. the variance is not consistent over time which is also consistent with market data. and the stock return can have fat tails under the bernoulli normal misture model
+
+```{r cars}
+N <- 600
+set.seed(124)
+norm <- rnorm(N)
+abnorm <- norm*0.063 + 0.0045
+plot(abnorm,type = "l")
+```
+It does not look like the data, because the data is non-stationary. there are times where there's a lot of variance in the returns and times where there isnt, however, the simulation from normal distribution's variance is stationary aross time.
+```{r pressure}
+mu <- 0.012
+sig <- 0.05 
+p<- 0.15
+muj<- -0.05
+sigj <- 0.17
+#mean 0.0045
+mu + p*muj
+#variance =0.00715375
+sig**2+p*muj**2+p*sigj**2-p**2*muj**2
+#skewness = -0.9319173
+(p*muj**3+3*p*muj*sigj**2+2*p**3*muj**3-3*p*p*muj**3-3*p*p*muj*sigj**2)/(sig**2+p*muj**2+p*sigj**2-p**2*muj**2)**(3/2)
+#kurtosis =7.002188
+(3*sig**4+6*sig*sig*p*muj**2+6*sig*sig*p*sigj*sigj-6*sig*sig*p*p*muj*muj+p*muj**4+6*p*muj*muj*sigj*sigj+3*p*sigj**4+6*p**3*muj**4+6*p**3*muj**2*sigj**2-3*p**4*muj**4-4*p*p*muj**4-12*p*p*muj**2*sigj**2)/(sig**2+p*muj**2+p*sigj**2-p**2*muj**2)**2-3
+
+delta_t <- rnorm(N)
+epsilon_t <- rnorm(N)
+B_t <- rbinom(N, size = 1, prob = p)
+J_t <- B_t*(muj+sigj*delta_t)
+r_t <- mu + sig*epsilon_t+J_t
+plot(r_t,type = "l")
+```
+It doesn't look like the data, but there is a lot more negative jumps than positive jumps. what;s missing is that in the real data, there's periods of times with a lot of negative jumps and positive jumps and some periods with neither. whereas the simulation doesn't achieve that
+```{r p4}
+numN <- 100
+N<- 12
+my_mean <- c()
+my_error <-c()
+for (i in 1:numN) {
+delta_t <- rnorm(N)
+epsilon_t <- rnorm(N)
+B_t <- rbinom(N, size = 1, prob = p)
+J_t <- B_t*(muj+sigj*delta_t)
+r_t <- mu + sig*epsilon_t+J_t
+my_mean[i] <- mean(r_t)
+my_error[i] <- std.error(r_t)
+}
+t_mean <- mean(my_mean)
+t_sd <- sqrt(var(my_mean))
+#var is var(my_mean) = 0.0006082747
+t_stat <- t_mean/(t_sd/sqrt(numN))
+plot(my_mean,type= "l")
+# it looks like a distribution from the plot
+skewness(my_mean) #0.1260242
+kurtosis(my_mean)#1.373097
+jarque.bera.test(my_mean)
+#p-value = 0.01017 so it couldn't be a normal distribution
+mean(my_error)
+#the mean of the standard errors are 0.02217715 which is slightly higher than the standard deviation
+```
+t_stat is 3.044169 which is greater than 1.96 so we reject the null hypothesis
+
+```{r p42}
+numN <- 100
+N<- 24
+my_mean <- c()
+my_error <-c()
+for (i in 1:numN) {
+delta_t <- rnorm(N)
+epsilon_t <- rnorm(N)
+B_t <- rbinom(N, size = 1, prob = p)
+J_t <- B_t*(muj+sigj*delta_t)
+r_t <- mu + sig*epsilon_t+J_t
+my_mean[i] <- mean(r_t)
+my_error[i] <- std.error(r_t)
+}
+t_mean <- mean(my_mean)
+t_sd <- sqrt(var(my_mean))
+#var is var(my_mean) = 0.0003389792
+t_stat <- t_mean/(t_sd/sqrt(numN))
+plot(my_mean,type= "l")
+# it doesnt look like a distribution from the plot
+skewness(my_mean) #-0.5748082
+kurtosis(my_mean)#0.5307763
+jarque.bera.test(my_mean)
+#p-value = 0.02749 so it couldn't be a normal distribution
+mean(my_error)
+#the mean of the standard errors are 0.01663182 which is slightly lower than the standard deviation
+```
+t_stat is 0.15277 which is less than 1.96 so we keep the null hypothesis
+
+```{r p43}
+numN <- 100
+N<- 120
+my_mean <- c()
+my_error <-c()
+for (i in 1:numN) {
+delta_t <- rnorm(N)
+epsilon_t <- rnorm(N)
+B_t <- rbinom(N, size = 1, prob = p)
+J_t <- B_t*(muj+sigj*delta_t)
+r_t <- mu + sig*epsilon_t+J_t
+my_mean[i] <- mean(r_t)
+my_error[i] <- std.error(r_t)
+}
+t_mean <- mean(my_mean)
+t_sd <- sqrt(var(my_mean))
+#var is var(my_mean) = 6.445296e-05
+t_stat <- t_mean/(t_sd/sqrt(numN))
+plot(my_mean,type= "l")
+# it looks like a distribution from the plot
+skewness(my_mean) #0.02659691
+kurtosis(my_mean)#-0.3752769
+jarque.bera.test(my_mean)
+#p-value = 0.8009 so it could be a normal distribution
+mean(my_error)
+#the mean of the standard errors are 0.007614783 which is slightly lower than the standard deviation
+```
+t_stat is 6.69 which is greater than 1.96 so we reject the null hypothesis
+
+```{r p44}
+numN <- 100
+N<- 24
+my_mean <- c()
+my_error <-c()
+for (i in 1:numN) {
+delta_t <- rnorm(N)
+epsilon_t <- rnorm(N)
+B_t <- rbinom(N, size = 1, prob = p)
+J_t <- B_t*(muj+sigj*delta_t)
+r_t <- mu + sig*epsilon_t+J_t
+my_mean[i] <- mean(r_t)
+my_error[i] <- std.error(r_t)
+}
+t_mean <- mean(my_mean)
+t_sd <- sqrt(var(my_mean))
+#var is var(my_mean) = 0.0002818953
+t_stat <- t_mean/(t_sd/sqrt(numN))
+plot(my_mean,type= "l")
+# it looks like a distribution from the plot
+skewness(my_mean) #-0.1605593
+kurtosis(my_mean)#-0.5593615
+jarque.bera.test(my_mean)
+#p-value = 0.4663 so it could be a normal distribution
+mean(my_error)
+#the mean of the standard errors are 0.01727482 which is slightly higherer than the standard deviation
+```
+t_stat is 3.8055 which is less than 1.96 so we reject the null hypothesis
+

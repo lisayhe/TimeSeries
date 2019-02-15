@@ -1,0 +1,428 @@
+---
+title: "HW2"
+author: "Lisa He"
+date: "4/24/2017"
+output: pdf_document
+---
+1. (a)
+```{r 1a}
+
+setwd("/Users/Lisa/Documents/Econ 144/HW 2")
+library(lattice)
+library(foreign)
+library(MASS)
+library(car)
+require(stats)
+require(stats4)
+library(KernSmooth)
+library(fastICA)
+library(cluster)
+library(leaps)
+library(mgcv)
+library(rpart)
+library(pan)
+library(mgcv)
+library(DAAG)
+z=read.table("labordata.dat")
+names(z)= c("male","female","total")
+attach(z)
+# Convert data to time series format:
+male_ts<-ts(male,start=1948,freq=12)
+t<-seq(1948, 1991,length=length(male_ts))
+female_ts<-ts(female,start=1948,freq=12)
+t<-seq(1948, 1991,length=length(female_ts))
+total_ts<-ts(total,start=1948,freq=12)
+t<-seq(1948, 1991,length=length(total_ts))
+#Summary
+summary(male_ts)
+summary(female_ts)
+summary(total_ts)
+#Plot
+plot(male_ts,ylab="Participation Rate (Male)", xlab="Time", lwd=2, col='skyblue3',ylim=c(75,88), xlim=c(1968,1995))
+plot(female_ts,ylab="Participation Rate (Female)", xlab="Time", lwd=2, col='skyblue3',ylim=c(32,58), xlim=c(1968,1995))
+plot(total_ts,ylab="Participation Rate (Total)", xlab="Time", lwd=2, col='skyblue3',ylim=c(58,67), xlim=c(1968,1995))
+
+```
+(b) Linear:
+```{r 1blinear}
+#Linear Fit
+f1=lm(female_ts~t)
+quartz()
+par(mfrow=c(2,1))
+plot(female_ts,ylab="Participation Rate (Female)", xlab="Time", lwd=2, col='skyblue3',ylim=c(32,58), xlim=c(1968,1995))
+#The next commands adds the U.S. recession bands
+#nberShade()
+lines(t,f1$fit,col="red3",lwd=2)
+plot(t,f1$res, ylab="Residuals",type='l',xlab="Time")
+
+```
+The linear model is a pretty good fit and the residuals don't look random.
+
+Polynomial:
+```{r 1bpoly}
+m2=lm(female_ts~t+I(t^2))
+quartz()
+par(mfrow=c(2,1))
+plot(female_ts,ylab="Participation Rate (Female)", xlab="Time", lwd=2, col='skyblue3',ylim=c(32,58), xlim=c(1968,1995))
+lines(t,m2$fit,col="red3",lwd=2)
+plot(t,m2$res, ylab="Residuals",type='l',xlab="Time")
+```
+The polynomial model is a pretty good fit and the residuals look random.
+
+Exponential:
+```{r 1bexponential}
+ds=data.frame(x=t, y=female_ts)
+par(mfrow=c(2,1))
+plot(female_ts,ylab="Participation Rate (Female)", xlab="Time", lwd=2, col='skyblue3',ylim=c(32,58), xlim=c(1968,1995))
+#lines(t,m1$fit,col="green",lwd=2)
+m4=nls(y ~ exp(a + b * t),data=ds, start = list(a = 0, b = 0))
+lines(ds$x, predict(m4, list(x = ds$x)),col="red3",lwd=2)
+plot(t,residuals(m4), ylab="Residuals",type='l',xlab="Time")
+summary(m4)
+```
+The exponentiall model is a pretty good fit and the residuals look random.
+
+(c) linear:
+```{r 1clinear}
+quartz()
+plot(f1$fit,f1$res, pch=20,col="skyblue4",lwd=10)
+abline(h=0,lwd=2,col = "red3")
+```
+The residuals show a pattern where they are positive for the first 10 and last 10 but negative in the middle.
+
+Polynomial:
+```{r 1cpoly}
+quartz()
+plot(m2$fit,m2$res, pch=20,col="skyblue4",lwd=10)
+abline(h=0,lwd=2,col = "red3")
+```
+The residuals show a pattern where they go up and down before 50 and then go down.
+
+Exponential:
+```{r 1cexponential}
+quartz()
+plot(m4)
+```
+The residuals show a pattern where they go down until 40 and then fluctuate between 40 and 45 and then go up before 50 and then go down.
+
+(d)
+```{r 1d}
+AIC(f1,m2,m4)
+BIC(f1,m2,m4)
+```
+m2, the polynomial model has the lowest AIC and BIC, so I choose this one.
+
+(e)
+```{r 1e}
+tn=data.frame(t=seq(1992,2002))
+pred=predict(m2, tn, se.fit = TRUE)
+#plot(c(male_ts,pred$fit),type='l',xlim=c(1940,2000))
+
+#we are using the prediction function:
+pred.plim = predict(m2,tn, level =0.95, interval="prediction")
+# simple regression, then use the predict() function
+pred.clim = predict(m2, tn,level=0.95, interval="confidence")
+
+#Just overlaying the two prediction so we can compare them
+matplot(tn$t,cbind(pred.clim, pred.plim[,-1]),
+        lty=c(1,1,1,3,3), type="l", lwd=2, ylab="predicted y",xlab="Time")
+
+
+```
+The point estimate is predicting an upward trend. Both the prediction intervals and the confidence intervals are presenting an upward trend as well.
+
+(f)
+```{r 1f}
+hwfit<-HoltWinters(female_ts)
+quartz()
+plot(hwfit)
+```
+It fits much better than my model.
+
+(g)
+```{r 1g}
+quartz()
+hwpred <- predict(hwfit, 120, prediction.interval = TRUE,level=0.5)
+plot(hwfit,hwpred,ylab="Participation Rate (Female)", xlab="Time",xlim=c(1948,2002))
+```
+It presents an upward trend as well, but the width of the interval increases as the prediction year increases.
+
+2. Problem 3.2
+Monthly inflation (growth rate of monthly CPI)
+```{r 2a}
+rm(list=ls(all=TRUE))
+library(lattice)
+library(foreign)
+library(MASS)
+library(car)
+require(stats)
+require(stats4)
+library(KernSmooth)
+library(fastICA)
+library(cluster)
+library(leaps)
+library(mgcv)
+library(rpart)
+library(pan)
+library(mgcv)
+library(DAAG)
+library("TTR")
+library(tis)
+require("datasets")
+require(graphics)
+library("forecast")
+require(astsa)
+library(xtable)
+library(stats)
+library(readxl)
+library(quantmod)
+CPI <- read_excel("~/Documents/Econ 144/HW 2/CPI.xls")
+names(CPI)= c("Date","CPI")
+attach(CPI)
+cpi_ts<-ts(CPI,start=1959,freq=12)
+# Growth rates:
+log.cpi <- log(cpi_ts)
+r_cpi <- diff(log.cpi)
+head(log.cpi)
+head(r_cpi)
+dim(r_cpi)
+```
+expost real interest rate = 3-month T-bill rate - monthly inflation rate
+```{r 2b}
+TB3 <- read_excel("~/Documents/Econ 144/HW 2/TB3.xls")
+dim(TB3)
+names(TB3)= c("Date","TB3")
+attach(TB3)
+tb3_ts<-ts(TB3,start=1959,freq=12)
+
+#tb3_ts <- tb3_ts[-1:2, ]
+dim(tb3_ts)
+dim(r_cpi)
+realrate<-tb3_ts[,2] - r_cpi[,2]
+class(realrate)
+
+```
+From HW1
+```{r 2c}
+# Personal consumption expenditures
+PCEC96 <- read_excel("~/Documents/Econ 144/HW 2/Expend.xls")
+#dim(PCEC96)
+names(PCEC96)= c("Date","Expend")
+attach(PCEC96)
+pce_ts<-ts(Expend,start=1959,freq=12)
+length(pce_ts)
+# Growth rates:
+log.pce <- log(pce_ts)
+r_pce <- diff(log.pce)
+length(r_pce)
+# Disposable personal income:
+DSPIC96 <- read_excel("~/Documents/Econ 144/HW 2/Income.xls")
+names(DSPIC96)= c("Date","Income")
+attach(DSPIC96)
+dpi_ts <- ts(Income, start = 1959, freq = 12)
+dpi_ts <- dpi_ts[-698]
+length(dpi_ts)
+# Growth rates:
+log.dpi <- log(dpi_ts)
+r_dpi <- diff(log.dpi)
+
+length(r_pce)
+length(r_dpi)
+
+realrate_ts <- ts(realrate,start=1959,freq=12)
+window(realrate_ts, start = start(realrate_ts) + 1) 
+dim(realrate_ts)
+length(realrate_ts)
+#Regression
+
+#model<-lm(r_pce~r_dpi+realrate, na.action=na.omit)
+#summary(model)
+
+```
+
+3. Problem 4.4
+```{r 344}
+# Clear all variables and prior sessions
+rm(list=ls(all=TRUE))
+# Load Libraries
+library(lattice)
+library(foreign)
+library(MASS)
+library(car)
+require(stats)
+require(stats4)
+library(KernSmooth)
+library(fastICA)
+library(cluster)
+library(leaps)
+library(mgcv)
+library(rpart)
+library(pan)
+library(mgcv)
+library(DAAG)
+library("TTR")
+library(tis)
+require("datasets")
+require(graphics)
+library("forecast")
+require(astsa)
+library(xtable)
+library(stats)
+library(readxl)
+Table4_1 <- read_excel("~/Documents/Econ 144/HW 2/Problem4_4.xlsx")
+names(Table4_1)= c("Date","Price","Rate")
+attach(Table4_1)
+price_ts<-ts(Price,start=1980,freq=4)
+log.price <- log(price_ts)
+rate_ts<-ts(Rate,start=1980,freq=4)
+log.rate <- log(rate_ts)
+
+```
+regression model with one lag 
+```{r 3441}
+laglogprice <- lag(log.price)
+lag1<-lm(log.price ~ laglogprice)
+summary(lag1)
+```
+regression model with two lags 
+```{r 3442}
+laglogprice2 <- lag(laglogprice)
+lag2<-lm(log.price ~ laglogprice+laglogprice2)
+summary(lag2)
+```
+regression model with three lags 
+```{r 3443}
+laglogprice3 <- lag(laglogprice2)
+lag3<-lm(log.price ~ laglogprice+laglogprice2+laglogprice3)
+summary(lag3)
+```
+regression model with four lags 
+```{r 3444}
+laglogprice4 <- lag(laglogprice3)
+lag4<-lm(log.price ~ laglogprice+laglogprice2+laglogprice3+laglogprice4)
+summary(lag4)
+```
+
+
+4. Problem 4.6
+```{r 446}
+# Clear all variables and prior sessions
+rm(list=ls(all=TRUE))
+# Load Libraries
+library(lattice)
+library(foreign)
+library(MASS)
+library(car)
+require(stats)
+require(stats4)
+library(KernSmooth)
+library(fastICA)
+library(cluster)
+library(leaps)
+library(mgcv)
+library(rpart)
+library(pan)
+library(mgcv)
+library(DAAG)
+library("TTR")
+library(tis)
+require("datasets")
+require(graphics)
+library("forecast")
+require(astsa)
+library(xtable)
+library(stats)
+library(readxl)
+Table4_6 <- read_excel("~/Documents/Econ 144/HW 2/Ex4_6.xlsx")
+names(Table4_6)= c("Date","Actual","Forecast")
+attach(Table4_6)
+actual_ts<-ts(Actual,start=1969,freq=4)
+#p<-seq(1, 37,length=length(price_ts))
+forecast_ts<-ts(Forecast,start=1969,freq=4)
+#r<-seq(1, 37,length=length(rate_ts))
+error = actual_ts - forecast_ts
+summary(error)
+quartz()
+ts.plot(actual_ts, forecast_ts, error, col=c(rep("blue",1),rep("black",1),rep("red",1)))
+#par(mfrow=c(2,1))
+#acf(price_ts,main="Prices")
+#acf(diff(price_ts),main="ACF of the First Difference of Prices")
+```
+Observation: The red line is almost all above 0, which means the actual data is almost always higher than the forecast.
+
+Descriptive Statistics:
+```{r 4462}
+summary(actual_ts)
+summary(forecast_ts)
+summary(error)
+```
+ACF:
+```{r 4463}
+acf(actual_ts)
+acf(forecast_ts)
+acf(error)
+```
+PACF:
+```{r 446pacf}
+pacf(actual_ts)
+pacf(forecast_ts)
+pacf(error)
+```
+Yes, I observe time dependence.
+
+5. Problem 5.4
+```{r 554}
+# Clear all variables and prior sessions
+rm(list=ls(all=TRUE))
+# Load Libraries
+library(lattice)
+library(foreign)
+library(MASS)
+library(car)
+require(stats)
+require(stats4)
+library(KernSmooth)
+library(fastICA)
+library(cluster)
+library(leaps)
+library(mgcv)
+library(rpart)
+library(pan)
+library(mgcv)
+library(DAAG)
+library("TTR")
+library(tis)
+require("datasets")
+require(graphics)
+library("forecast")
+require(astsa)
+library(xtable)
+library(stats)
+library(readxl)
+Table4_6 <- read_excel("~/Documents/Econ 144/HW 2/Ex5_4.xlsx")
+names(Table4_6)= c("DateA","AMEX","DateS","SP500")
+attach(Table4_6)
+amex_ts<-ts(AMEX,start=1996,freq=254)
+log.amex <- log(amex_ts)
+r_amex <- diff(log.amex)
+sp500_ts<-ts(SP500,start=1990,freq=239)
+log.sp500 <- log(sp500_ts)
+r_sp500 <- diff(log.sp500)
+par(mfrow=c(2,1))
+acf(r_amex,main="AMEX Returns",na.action = na.omit)
+acf(r_sp500,main="SP500 Returns",na.action = na.omit)
+pacf(r_amex,main="AMEX Returns",na.action = na.omit)
+pacf(r_sp500,main="SP500 Returns",na.action = na.omit)
+
+```
+
+They are different from those in Figure 5.6.
+
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+

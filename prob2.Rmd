@@ -1,0 +1,124 @@
+---
+title: "prob2"
+author: "Lisa He"
+date: "2/9/2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls(all=TRUE))
+library(lattice)
+library(foreign)
+library(MASS)
+library(car)
+require(stats)
+require(stats4)
+library(KernSmooth)
+library(fastICA)
+library(cluster)
+library(leaps)
+library(mgcv)
+library(rpart)
+library(pan)
+library(mgcv)
+library(DAAG)
+library("TTR")
+library(tis)
+require("datasets")
+require(graphics)
+library("forecast")
+require(astsa)
+library(xtable)
+library(stats)
+library(readxl)
+library(quantmod)
+library(e1071)
+library(tseries)
+library(robustbase)
+library(sandwich)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+DBV <- read_excel("/Users/Lisa/Documents/Econometrics/ass1/DBV.xlsx")
+names(DBV)= c("Date", "Open","High","	Low","Close","Volume","Adj")
+attach(DBV)
+dbv_ts<-ts(DBV,start = 1, frequency = 1)
+# Growth rates:
+log.dbv <- log(dbv_ts)
+r_dbv <- diff(log.dbv)
+head(log.dbv)
+head(r_dbv)
+dim(r_dbv)
+plot(r_dbv[,5])
+hist(r_dbv[,5])
+my_T<- 2330
+my_skew<-skewness(r_dbv[,5])
+skew_t <- my_skew/sqrt(6/my_T)
+#skew_t is -16.9339 whose absolute value is greater than 1.96, so we reject the null hypothesis
+
+my_kurt <-kurtosis(r_dbv[,5])
+kurt_t <-(my_kurt)/sqrt(24/my_T)
+#kurt_t is 131.615 whose absolute value is greater than 1.96, so we reject the null hypothesis
+jarque.bera.test(r_dbv[,5])
+#p-value < 2.2e-16 so reject the null 
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure}
+GSPC <- read_excel("/Users/Lisa/Documents/Econometrics/ass1/GSPC.xlsx")
+names(GSPC)= c("Date", "Open","High","	Low","Close","Volume","Adj")
+attach(GSPC)
+GSPC_ts<-ts(GSPC,start = 1, frequency = 1)
+# Growth rates:
+log.GSPC <- log(GSPC_ts)
+r_GSPC <- diff(log.GSPC)
+head(log.GSPC)
+head(r_GSPC)
+dim(r_GSPC)
+plot(r_GSPC[,5])
+hist(r_GSPC[,5])
+my_T<- 2330
+my_skew2<-skewness(r_GSPC[,5])
+skew_t2 <- my_skew2/sqrt(6/my_T)
+#skew_t2 is -6.38153 whose absolute value is greater than 1.96, so we reject the null hypothesis
+
+my_kurt2 <-kurtosis(r_GSPC[,5])
+kurt_t2 <-(my_kurt2)/sqrt(24/my_T)
+#kurt_t2 is 96.4317 whose absolute value is greater than 1.96, so we reject the null hypothesis
+
+jarque.bera.test(r_GSPC[,5])
+#p-value < 2.2e-16 so reject the null 
+```
+
+```{r prob3}
+logrDBV <-r_dbv[,5]
+logrGSPC <-r_GSPC[,5]
+my_model<-lm(logrDBV~logrGSPC)
+summary(my_model)
+g_model <-glm(logrDBV~logrGSPC)
+summary(g_model)
+#rob_model <- lmrob(logrDBV~logrGSPC)
+#summary(rob_model)
+my_model %>% 
+    vcovHC() %>% 
+    diag() %>% 
+    sqrt()
+```
+Under OLS assumptions, the standard error of the intercept is 0.0001367 and that of the slope is 0.0101522.
+Allowing for non-normalities, the standard error of the intercept is 0.0001367 and that of the slope is 0.0101522.
+the heteroskedastic standard error of the intercept is 0.0001375697 and that of the slope is 0.0182961682.
+
+The White standard errors are larger than the classic OLS standard errors because the homoskedasticity-only standard errors are only valid of the errors are homoskedastic and that the White standard errors are valid whether or not the errors are heteroskedastic. Therefore, the White standard errors are more general and more conservative.
+
